@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://github.com/marcosdh1987/ml-python-base/schemas/harness-release-v1.schema.json",
+  "$id": "https://github.com/xmartlabs/sdlc-ml-python-template/schemas/harness-release-v1.schema.json",
   "title": "Harness template release manifest",
   "description": "Machine-readable provenance and compatibility record attached to a SemVer GitHub Release of the template. Generated after the tag exists; never committed with a self-referential commit SHA.",
   "type": "object",

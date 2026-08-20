@@ -303,8 +303,8 @@ def test_check_release_provenance_supplied_ok(repo: Path) -> None:
     _git(repo, "commit", "-q", "-m", "gov change")
     prov = hr.Provenance(
         proposals=("HEP-2026-014",),
-        source_issues=("marcosdh1987/ml-python-base#31",),
-        source_pull_requests=("marcosdh1987/ml-python-base#32",),
+        source_issues=("xmartlabs/sdlc-ml-python-template#31",),
+        source_pull_requests=("xmartlabs/sdlc-ml-python-template#32",),
     )
     problems = hr.check_release(
         repo,
@@ -435,7 +435,7 @@ def test_cli_prepare_precondition_exit_code(
 
 def _valid_manifest() -> dict:
     return hr.build_release_manifest(
-        repository="marcosdh1987/ml-python-base",
+        repository="xmartlabs/sdlc-ml-python-template",
         version="0.2.0",
         commit="a" * 40,
         published_at="2026-07-22T15:00:00Z",
@@ -447,8 +447,8 @@ def _valid_manifest() -> dict:
         platform_changed=False,
         platform_paths=[],
         proposals=["HEP-2026-014"],
-        source_issues=["marcosdh1987/ml-python-base#31"],
-        source_pull_requests=["marcosdh1987/ml-python-base#32"],
+        source_issues=["xmartlabs/sdlc-ml-python-template#31"],
+        source_pull_requests=["xmartlabs/sdlc-ml-python-template#32"],
         governance_tree_sha256="sha256:" + "b" * 64,
         skills_lock_sha256="sha256:" + "c" * 64,
         registry_sha256="sha256:" + "d" * 64,
@@ -919,3 +919,25 @@ def test_publish_mid_failure_reports_remaining_steps(
     assert "NOT rolled back" in out
     assert "Finish manually" in out
     assert "gh release upload" in out
+
+
+# --------------------------------------------------------------------------- #
+# Repository slug resolution
+# --------------------------------------------------------------------------- #
+
+
+def test_slug_from_remote_parses_ssh_and_https() -> None:
+    assert hr._slug_from_remote("git@github.com:acme/widget.git") == "acme/widget"
+    assert hr._slug_from_remote("https://github.com/acme/widget") == "acme/widget"
+    assert hr._slug_from_remote("") == ""
+
+
+def test_repository_prefers_env_override(monkeypatch) -> None:
+    monkeypatch.setenv(hr.REPOSITORY_ENV_VAR, "acme/widget")
+    assert hr.repository() == "acme/widget"
+
+
+def test_repository_falls_back_when_no_remote(monkeypatch, tmp_path: Path) -> None:
+    """A repo with no `origin` must still stamp a slug, not crash or emit empty."""
+    monkeypatch.delenv(hr.REPOSITORY_ENV_VAR, raising=False)
+    assert hr.repository(tmp_path) == hr.DEFAULT_REPOSITORY
