@@ -20,4 +20,14 @@ Template for a new entry — newest first, directly below this comment.
 **How to apply:** <what to do differently next time>
 -->
 
-_No entries yet._
+## The docs-coverage gate only counts `docs/` — 2026-09-07
+
+`make check-docs-coverage` fails any diff that touches `src/` or `tests/` without a
+changed file under `docs/`. Updating `.github/skills/README.md` or `CONTRIBUTING.md`
+does not satisfy it, even when those are the natural home for the prose.
+
+**Why it matters:** `make check` passes and `make ci` still fails, so the gate is
+easy to hit at the very end of a change that looked finished.
+**How to apply:** When an engine change lands in `src/`, write the reference prose in
+the matching `docs/` page (for the skills engine, `docs/skills-management.md`) and
+let `.github/` docs point at it.
