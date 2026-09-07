@@ -5,6 +5,32 @@ All notable changes to this template are documented here. The format is based on
 [Semantic Versioning](https://semver.org/). Downstream projects adopt a release with
 `make template-sync REF=vX.Y.Z` (see `docs/template-sync.md`).
 
+## [1.1.0]
+
+Internal skills gain the shape external skills always had: a folder. Backward
+compatible — every existing flat `.md` skill projects byte-identically.
+
+### Added
+- **Internal skills may be folders** (`skills_sync/discovery.py`,
+  `skills_sync/models.py`, `skills_sync/linker.py`): an internal skill is no longer
+  restricted to a flat `.github/skills/<name>.md`. It may be a `<name>/` directory
+  with `SKILL.md` as its entry point and the scripts, templates or references it runs
+  beside it; a directory without `SKILL.md` is not a skill and is skipped. Shape and
+  provenance are now independent, so an internally authored skill that ships a script
+  no longer has to be smuggled into `.github/skills-external/`. `Skill.is_bundle`
+  exposes the shape and the linker branches on it instead of on `kind`.
+- **Documented both skill shapes** (`docs/skills-management.md`,
+  `.github/skills/README.md`, `CONTRIBUTING.md`): which layout to use, that the skill name comes from the file stem or folder name
+  rather than the frontmatter, and that agents must call the governed path of a
+  bundled script (`.github/skills/<name>/<script>`) — never a native copy, which is
+  rebuilt on every sync.
+
+### Fixed
+- **Bundled scripts stay executable in copied views** (`skills_sync/linker.py`): the
+  copy strategy used by Antigravity replicated files with `shutil.copyfile`, which
+  drops the mode bit, so a projected helper script was not runnable. It now uses
+  `copy2`. Folder digests hash content only, so no manifest changes.
+
 ## [1.0.0]
 
 First release from the organizational repository (`xmartlabs/sdlc-ml-python-template`),
