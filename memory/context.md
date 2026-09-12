@@ -10,7 +10,12 @@
 
 ## Active focus
 
-- _What is being worked on right now._
+- Skills catalog v3 adopted from the upstream template (`marcosdh1987/ml-python-base`
+  v1.0.0): layered catalog (9 developer entrypoints, 12 primitives, 3 optional,
+  1 hidden, 5 legacy aliases), registry overlays plus the `git-actions` policy
+  enforced at tool level, a generated `docs/generated/skills-catalog.md`, and routing
+  evals in `tests/routing/`. `[template_sync].protocol` is now 2. Pending: human
+  review and commit, then a MAJOR release. See `docs/skills-catalog-v3-audit.md`.
 
 ## Constraints & decisions in force
 
