@@ -9,8 +9,13 @@ Stdlib-only on purpose: this script must run on a fresh clone before any
 virtual environment or dev dependency exists (``python3 scripts/init_project.py``).
 
 Lines pointing at the upstream template repository
-(``git@github.com:...ml-python-base.git``) are never rewritten — the
-template-sync workflow (docs/template-sync.md) depends on them.
+(``git@github.com:...sdlc-ml-python-template.git``, or the former
+``...ml-python-base.git``) are never rewritten — the template-sync workflow
+(docs/template-sync.md) depends on them.
+
+It also selects the project's **harness level** (ADR-0003): ``minimal`` by
+default, ``full`` on request. The level is written to ``harness.toml``; the
+skills outside it stay in ``.github/skills*/`` as optional add-ons.
 """
 
 from __future__ import annotations
@@ -21,13 +26,24 @@ import re
 import shutil
 import subprocess
 import sys
+import tomllib
 from pathlib import Path
 
 OLD_PACKAGE = "ml_python_base"
 OLD_DIST = "ml-python-base"
 
-# Lines that must keep pointing at the upstream template repo.
-UPSTREAM_URL_PATTERN = re.compile(r"git@github\.com:\S*ml-python-base\.git")
+# Lines that must keep pointing at the upstream template repo — under its
+# current name (sdlc-ml-python-template) and its former one (ml-python-base).
+UPSTREAM_URL_PATTERN = re.compile(
+    r"git@github\.com:\S*(?:ml-python-base|sdlc-ml-python-template)\.git"
+)
+
+# Harness levels (ADR-0003). Read with tomllib, not the engine: this script
+# runs before any environment exists, and the engine's package is renamed here.
+DEFAULT_LEVEL = "minimal"
+FULL_LEVEL = "full"
+LEVELS_FILE = Path(".github/harness-levels.toml")
+SELECTION_FILE = Path("harness.toml")
 
 NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]*$")
 RESERVED_NAMES = frozenset({"src", "tests", "scripts", OLD_PACKAGE})
@@ -186,9 +202,59 @@ def create_env_file(root: Path, dry_run: bool) -> None:
         shutil.copyfile(example, env_file)
 
 
-def run(name: str, root: Path, dry_run: bool, force: bool) -> None:
+def check_level(root: Path, level: str) -> bool:
+    """Validate ``level`` before anything is written.
+
+    Returns False when the clone has no level definitions (a template older
+    than levels): there is nothing to select and every skill is carried.
+    """
+    path = root / LEVELS_FILE
+    if not path.is_file():
+        if level not in (DEFAULT_LEVEL, FULL_LEVEL):
+            raise InitError(f"no {LEVELS_FILE} in this clone; cannot select '{level}'")
+        return False
+    try:
+        declared = set(tomllib.loads(path.read_text(encoding="utf-8")).get("level", {}))
+    except tomllib.TOMLDecodeError as exc:
+        raise InitError(f"invalid {LEVELS_FILE}: {exc}") from exc
+    known = declared | {FULL_LEVEL}
+    if level not in known:
+        raise InitError(
+            f"unknown harness level '{level}'. Defined: {', '.join(sorted(known))}"
+        )
+    return True
+
+
+def write_level_selection(root: Path, level: str, dry_run: bool) -> None:
+    """Write ``harness.toml`` selecting ``level``; never overwrite a project's own."""
+    path = root / SELECTION_FILE
+    if path.exists():
+        print(f"  keep existing {SELECTION_FILE}")
+        return
+    print(f"  select harness level '{level}' ({SELECTION_FILE})")
+    if dry_run:
+        return
+    path.write_text(
+        "# Which governed skills this project carries (ADR-0003).\n"
+        "# Levels are defined in .github/harness-levels.toml. Skills outside the\n"
+        "# selection stay in .github/skills*/ as optional add-ons: not linked into\n"
+        "# native views and not listed in adapters. Edit, then `make sync-skills`.\n"
+        "[skills]\n"
+        f'level = "{level}"\n'
+        "include = []   # optional skills to switch on\n"
+        "exclude = []   # level skills to switch off\n",
+        encoding="utf-8",
+    )
+
+
+def run(
+    name: str, root: Path, dry_run: bool, force: bool, level: str = DEFAULT_LEVEL
+) -> None:
     """Execute the full initialization flow."""
     validate_name(name)
+    # Before the git check and any write: a typo in LEVEL must not leave a
+    # half-renamed tree behind.
+    has_levels = check_level(root, level)
     dist_name = name.replace("_", "-")
     ensure_clean_git_tree(root, force)
     # Validate the rename precondition before touching anything.
@@ -203,6 +269,8 @@ def run(name: str, root: Path, dry_run: bool, force: bool) -> None:
     rename_package_dir(root, name, dry_run)
     rewrite_references(root, name, dist_name, dry_run)
     create_env_file(root, dry_run)
+    if has_levels:
+        write_level_selection(root, level, dry_run)
     print("Done. Next steps (chained automatically by `make init`):")
     print("  make install && make sync-skills && make template-remote-setup && make ci")
 
@@ -224,13 +292,18 @@ def main(argv: list[str] | None = None) -> int:
         help="print every action without writing anything",
     )
     parser.add_argument(
+        "--level",
+        default=DEFAULT_LEVEL,
+        help=f"harness level to carry (default: {DEFAULT_LEVEL}; or {FULL_LEVEL})",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="proceed even if the git working tree is dirty",
     )
     args = parser.parse_args(argv)
     try:
-        run(args.name, args.root.resolve(), args.dry_run, args.force)
+        run(args.name, args.root.resolve(), args.dry_run, args.force, args.level)
     except InitError as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 1

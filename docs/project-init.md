@@ -9,8 +9,16 @@ supported AI tool through the same flow.
 
 ```bash
 git clone <your-clone-of-the-template> my_project && cd my_project
-make init NAME=my_project
+make init NAME=my_project              # carries the `minimal` harness level
+make init NAME=my_project LEVEL=full   # or every skill
 ```
+
+The harness level (ADR-0003) decides which skills the project carries. `minimal`
+(the default) projects seven skills: plan, debug, verify, research, review,
+`writing-plans` and `brainstorm_quick`. The rest stay in `.github/skills*/` as
+optional add-ons, switched on with `include` in `harness.toml`. `make init` writes
+`harness.toml` and never overwrites an existing one. An unknown `LEVEL` fails
+before any file is touched. See `docs/skills-management.md` → *Harness levels*.
 
 `make init` runs `scripts/init_project.py` and then chains:
 
@@ -43,7 +51,7 @@ any virtual environment exists. Steps:
   (`pyproject.toml`, `Makefile`, `adapters/registry.toml`, docs, agents
   README, notebook kernel name, devcontainer name, and all Python sources).
 - **Preserves every line containing the upstream template URL**
-  (`git@github.com:...ml-python-base.git`): `TEMPLATE_REPO` in the `Makefile`
+  (`git@github.com:...sdlc-ml-python-template.git`, or the former `...ml-python-base.git`): `TEMPLATE_REPO` in the `Makefile`
   and the example in `docs/template-sync.md` must keep pointing at the
   template or `make template-sync-merge` breaks.
 - Creates `.env` from `.env.example` if absent. Review it afterwards — model

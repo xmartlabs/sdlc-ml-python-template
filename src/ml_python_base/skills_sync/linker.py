@@ -133,6 +133,24 @@ def stale_native_entries(root: Path, tool: ToolSpec, skills: list[Skill]) -> lis
     )
 
 
+def missing_native_entries(
+    root: Path, tool: ToolSpec, skills: list[Skill]
+) -> list[str]:
+    """Selected skills absent from the native view (e.g. a level just widened).
+
+    The counterpart of :func:`stale_native_entries`: together they make the
+    view's entry set equal the projected selection (ADR-0003).
+    """
+    if not tool.has_native_view:
+        return []
+    dest_root = root / tool.native_skills_dir
+    return sorted(
+        (dest_root / skill.name).relative_to(root).as_posix()
+        for skill in projected_skills(skills)
+        if not (dest_root / skill.name).exists()
+    )
+
+
 def _remove_stale(dest_root: Path, desired: set[str]) -> None:
     for child in dest_root.iterdir():
         if child.name in _PROTECTED_NAMES:

@@ -30,7 +30,7 @@ Refresh the Antigravity-native layout with:
 - `make setup-antigravity-skills`
 - `make sync-skills`
 
-If an internal governed skill and an external synced skill share the same name, prefer the internal governed skill. When skills overlap in purpose, follow the **Routing rules** in the generated block below (bounded change → `brainstorm_quick` or straight to `plan_and_execute_feature`; new subsystem or design-impacting change → `brainstorming`). If unsure which applies, state the chosen skill and why in the run trace.
+If an internal governed skill and an external synced skill share the same name, prefer the internal governed skill. When skills overlap in purpose, follow the **Routing rules** in the generated block below (bounded change → `brainstorm_quick` or straight to `plan_and_execute_feature`; new subsystem or design-impacting change → `brainstorming` when this project's harness level carries it). If unsure which applies, state the chosen skill and why in the run trace.
 
 <!-- BEGIN GENERATED SKILLS (managed by skills_sync; do not edit) -->
 Skills are projected into `@.agents/skills/`; governed sources: `@.github/skills/` (internal, wins on name conflicts) and `@.github/skills-external/` (vendored). Full catalog (families, visibility, profiles): `@docs/generated/skills-catalog.md`.

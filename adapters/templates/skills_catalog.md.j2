@@ -1,5 +1,12 @@
 {% macro row(s) -%}
-| `{{ s.name }}` | {{ s.meta.family }} | {{ s.meta.profile }} | {{ s.kind }} | {{ s.summary }} |
+| `{{ s.name }}` | {{ s.meta.family }} | {{ s.meta.profile }} | {{ s.kind }} | {{ s.summary }} |{% if carried is not none %} {{ "carried" if s.name in carried else "optional" }} |{% endif %}
+
+{%- endmacro %}
+{% macro head() -%}
+| Skill | Family | Profile | Kind | Summary |{% if carried is not none %} Here |{% endif %}
+
+|---|---|---|---|---|{% if carried is not none %}---|{% endif %}
+
 {%- endmacro %}
 # Skills catalog
 
@@ -7,6 +14,10 @@
 > and `adapters/registry.toml`. Do not edit by hand — `make check-sync` fails on drift.
 > Human guide: `docs/skills-guide.md`.
 
+{% if carried is not none %}
+**Harness level:** this project carries {{ carried | length }} skills (`harness.toml`). The rest stay in the repo as optional add-ons — not linked, not listed in adapters; switch one on with `include = [...]` in `harness.toml`, then `make sync-skills`.
+
+{% endif %}
 {{ view.discoverable | length }} discoverable skills ({{ view.entrypoints | length }} developer entrypoints, {{ view.primitives | length }} internal primitives, {{ view.optional | length }} optional), {{ view.hidden | length }} hidden, {{ view.aliases | length }} legacy names mapped to replacements.
 
 ## I want to…
@@ -21,8 +32,7 @@
 
 The names a developer needs to know. Each one composes the primitives below.
 
-| Skill | Family | Profile | Kind | Summary |
-|---|---|---|---|---|
+{{ head() }}
 {% for s in view.entrypoints %}
 {{ row(s) }}
 {% endfor %}
@@ -31,8 +41,7 @@ The names a developer needs to know. Each one composes the primitives below.
 
 Composed by the entrypoints. Invoke one directly only when the task is exactly that step.
 
-| Skill | Family | Profile | Kind | Summary |
-|---|---|---|---|---|
+{{ head() }}
 {% for s in view.primitives %}
 {{ row(s) }}
 {% endfor %}
@@ -41,8 +50,7 @@ Composed by the entrypoints. Invoke one directly only when the task is exactly t
 
 Available behind a profile; listed after the core catalog in every adapter.
 
-| Skill | Family | Profile | Kind | Summary |
-|---|---|---|---|---|
+{{ head() }}
 {% for s in view.optional %}
 {{ row(s) }}
 {% endfor %}
@@ -52,8 +60,7 @@ Available behind a profile; listed after the core catalog in every adapter.
 
 Projected natively (usable when named explicitly) but never listed for discovery.
 
-| Skill | Family | Profile | Kind | Summary |
-|---|---|---|---|---|
+{{ head() }}
 {% for s in view.hidden %}
 {{ row(s) }}
 {% endfor %}
