@@ -31,6 +31,7 @@ The `/adr` slash command (Claude Code) scaffolds a new record from the template.
 
 - [0001 — Record architecture decisions](0001-record-architecture-decisions.md)
 - [0002 — Layer the skills catalog with metadata, overlays and routing evals](0002-skills-catalog-v3-metadata-overlays-routing.md)
+- [0003 — A project carries a harness level, not the whole catalog](0003-a-project-carries-a-harness-level-not-the-whole-catalog.md)
 
 ## Why ADRs exist
 

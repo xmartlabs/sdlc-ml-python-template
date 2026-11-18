@@ -23,7 +23,7 @@ export ENVIRONMENT=localhost
 VENV_DIR ?= .venv
 KERNEL_NAME=ai-kernel
 TEMPLATE_REMOTE ?= template
-TEMPLATE_REPO ?= git@github.com:marcosdh1987/ml-python-base.git
+TEMPLATE_REPO ?= git@github.com:xmartlabs/sdlc-ml-python-template.git
 TEMPLATE_BRANCH ?= main
 
 # Declarative skills/adapters sync engine (replaces inline bash projection).
@@ -239,13 +239,16 @@ ci:
 # Bootstrap a fresh clone of this template as a new project.
 # Renames the package, rewrites references (keeping the upstream template URL),
 # creates .env, then chains environment setup and the read-only gates.
+# Carries the `minimal` harness level by default (ADR-0003); LEVEL=full keeps
+# every skill. Skills outside the level stay in .github/skills*/ as optional
+# add-ons (switch one on with `include` in harness.toml).
 # Usage:
-#   make init NAME=my_project
+#   make init NAME=my_project [LEVEL=minimal|full]
 # Preview without writing:
 #   python3 scripts/init_project.py --name my_project --dry-run
 init:
-	@[ -n "$(NAME)" ] || { echo "❌ Usage: make init NAME=my_project"; exit 1; }
-	@python3 scripts/init_project.py --name "$(NAME)"
+	@[ -n "$(NAME)" ] || { echo "❌ Usage: make init NAME=my_project [LEVEL=minimal|full]"; exit 1; }
+	@python3 scripts/init_project.py --name "$(NAME)" $(if $(LEVEL),--level "$(LEVEL)",)
 	@$(MAKE) install
 	@$(MAKE) sync-skills
 	@$(MAKE) template-remote-setup
@@ -393,6 +396,13 @@ render-catalog:
 # Fail if any generated skill artifact is stale (CI drift gate). Covers adapter
 # regions, native views (overlays, legacy removals), manifests, the lock file,
 # projected agents, and the generated skills catalog.
+# Harness level (ADR-0003): list the levels and what this project carries, or
+# select one (writes harness.toml, relinks native views, re-renders adapters).
+# Usage: make skill-level            # list
+#        make skill-level SET=full   # select
+skill-level:
+	@uv run python -m ml_python_base.skills_sync level $(if $(SET),--set "$(SET)",)
+
 check-sync:
 	@$(SKILLS_SYNC) check
 
@@ -493,6 +503,7 @@ help:
 	@echo "  make render-adapters     Regenerate the managed skill region in every adapter file"
 	@echo "  make sync-skills         Sync external skills to .github/skills-external and refresh native adapters"
 	@echo "  make check-sync          Fail if generated skill artifacts are stale (CI drift gate)"
+	@echo "  make skill-level [SET=]  List harness levels / select one (minimal|full, ADR-0003)"
 	@echo "  make render-catalog      Regenerate docs/generated/skills-catalog.md"
 	@echo "  make route PROMPT=..     Route one request through the skills catalog"
 	@echo "  make routing-eval        Deterministic skill-routing evals (tests/routing)"
@@ -514,4 +525,4 @@ clean:
 .DEFAULT_GOAL := help
 
 # Declare phony targets
-.PHONY: init install setup-hooks opencode opencode-doctor toolbelt-doctor clean help generate-requirements test test-unit format lint lint-fast fix fix-force check typecheck ci template-remote-setup template-sync-preview template-sync-merge template-sync-rebase setup-claude-skills setup-antigravity-skills setup-opencode-skills sync-agents render-adapters render-catalog route routing-eval routing-eval-live sync-skills check-sync check-docs-coverage purge-external-skills
+.PHONY: init install setup-hooks opencode opencode-doctor toolbelt-doctor clean help generate-requirements test test-unit format lint lint-fast fix fix-force check typecheck ci template-remote-setup template-sync-preview template-sync-merge template-sync-rebase setup-claude-skills setup-antigravity-skills setup-opencode-skills sync-agents render-adapters render-catalog route routing-eval routing-eval-live sync-skills check-sync check-docs-coverage purge-external-skills skill-level

@@ -28,9 +28,18 @@ from ml_python_base.skills_sync.config import DEFAULT_REGISTRY_PATH, load_regist
 from ml_python_base.skills_sync.discovery import EXTERNAL_DIR, discover_skills
 from ml_python_base.skills_sync.errors import DriftError, SkillsSyncError
 from ml_python_base.skills_sync.ingest import ingest_external_skills
+from ml_python_base.skills_sync.levels import (
+    FULL,
+    SELECTION_FILE,
+    apply_selection,
+    load_levels,
+    load_selection,
+    write_selection,
+)
 from ml_python_base.skills_sync.linker import (
     expected_overlay_files,
     link_tool,
+    missing_native_entries,
     stale_native_entries,
 )
 from ml_python_base.skills_sync.lockfile import LOCK_FILE, render_lock, write_lock
@@ -64,13 +73,20 @@ def _selected_tools(registry: Registry, tool_id: str | None) -> list[ToolSpec]:
     return [registry.tool(tool_id)]
 
 
-def _skills(root: Path, registry: Registry) -> list[Skill]:
-    """Discover skills with catalog metadata applied and validated."""
+def _catalog(root: Path, registry: Registry) -> list[Skill]:
+    """Discover every skill with catalog metadata applied and validated."""
     skills = discover_skills(root, registry=registry)
     assert_valid_catalog(skills, registry)
     for warning in catalog_warnings(skills, registry):
         print(f"⚠️  catalog: {warning}", file=sys.stderr)
     return skills
+
+
+def _skills(root: Path, registry: Registry) -> list[Skill]:
+    """The skills this project carries: the catalog filtered by its harness
+    level (ADR-0003). The one seam every projection reads — link, render,
+    route and check cannot disagree about what the project carries."""
+    return apply_selection(root, _catalog(root, registry))
 
 
 def _do_link(root: Path, registry: Registry, tool_id: str | None) -> None:
@@ -107,9 +123,52 @@ def _do_catalog(root: Path, registry: Registry) -> None:
     if path is None:
         print("note: registry declares no [catalog].output; nothing to write")
         return
-    changed = write_catalog(root, registry, _skills(root, registry))
+    changed = write_catalog(
+        root, registry, _catalog(root, registry), carried=_carried(root, registry)
+    )
     state = "updated" if changed else "unchanged"
     print(f"📚 {registry.catalog.output}: {state}")
+
+
+def _carried(root: Path, registry: Registry) -> set[str] | None:
+    """Names the project carries, or None when it carries the whole catalog.
+
+    None renders the catalog page exactly as before levels existed, so an
+    explicit ``level = "full"`` and no ``harness.toml`` are indistinguishable.
+    """
+    carried = {skill.name for skill in _skills(root, registry)}
+    if carried == {skill.name for skill in _catalog(root, registry)}:
+        return None
+    return carried
+
+
+def _do_level(root: Path, registry: Registry, name: str | None) -> None:
+    """List the harness levels and what this project carries; or select one."""
+    levels = load_levels(root)
+    if name is not None:
+        if name not in levels:
+            raise SkillsSyncError(
+                f"Unknown level '{name}'. Defined: {', '.join(sorted(levels))}."
+            )
+        write_selection(root, name)
+        print(f"🎯 {SELECTION_FILE}: level = {name}")
+        _do_link(root, registry, None)
+        _do_render(root, registry, None)
+        _do_catalog(root, registry)
+    selection = load_selection(root)
+    catalog = [s for s in _catalog(root, registry) if not s.meta.is_legacy]
+    carried = [s.name for s in _skills(root, registry) if not s.meta.is_legacy]
+    for level in levels.values():
+        size = "all" if level.skills is None else str(len(level.skills))
+        mark = "*" if level.name == selection.level else " "
+        print(f" {mark} {level.name:<10} {size:>4}  {level.description}")
+    source = selection.source or f"no {SELECTION_FILE} — default '{FULL}'"
+    print(f"\nselection ({source}): {len(carried)} of {len(catalog)} skills carried")
+    for skill_name in carried:
+        print(f"  + {skill_name}")
+    optional = sorted({s.name for s in catalog} - set(carried))
+    if optional:
+        print(f"optional (add to {SELECTION_FILE} include): {', '.join(optional)}")
 
 
 def _do_ingest(root: Path) -> None:
@@ -162,7 +221,7 @@ def check_drift(root: Path, registry: Registry) -> list[str]:
     for tool in registry.tools:
         # Adapter region drift.
         if tool.adapter_file:
-            expected = expected_file(root, registry, tool)
+            expected = expected_file(root, registry, tool, skills=skills)
             path = root / tool.adapter_file
             if expected is not None and path.read_text(encoding="utf-8") != expected:
                 stale.append(tool.adapter_file)
@@ -180,6 +239,7 @@ def check_drift(root: Path, registry: Registry) -> list[str]:
             if actual != content:
                 stale.append(str(path.relative_to(root)))
         stale.extend(stale_native_entries(root, tool, skills))
+        stale.extend(missing_native_entries(root, tool, skills))
         # Native agent projection drift.
         for path, content in expected_agent_files(root, tool, agents).items():
             actual = path.read_text(encoding="utf-8") if path.is_file() else ""
@@ -195,7 +255,10 @@ def check_drift(root: Path, registry: Registry) -> list[str]:
     doc_path = catalog_path(root, registry)
     if doc_path is not None:
         actual_doc = doc_path.read_text(encoding="utf-8") if doc_path.is_file() else ""
-        if actual_doc != render_catalog(root, registry, skills):
+        expected_doc = render_catalog(
+            root, registry, _catalog(root, registry), carried=_carried(root, registry)
+        )
+        if actual_doc != expected_doc:
             stale.append(registry.catalog.output)
 
     return sorted(set(stale))
@@ -272,6 +335,11 @@ def build_parser() -> argparse.ArgumentParser:
     sub.add_parser("purge", help="Reset external skills + native views.")
     sub.add_parser("check", help="Fail if generated artifacts are stale.")
 
+    level = sub.add_parser(
+        "level", help="List harness levels; with --set, select one (harness.toml)."
+    )
+    level.add_argument("--set", dest="set_level", help="Level to select.")
+
     route_cmd = sub.add_parser("route", help="Route a prompt through the catalog.")
     route_cmd.add_argument("prompt", help="The user request to route.")
     return parser
@@ -298,6 +366,8 @@ def main(argv: list[str] | None = None) -> int:
             _do_purge(root, registry)
         elif args.command == "check":
             return _do_check(root, registry)
+        elif args.command == "level":
+            _do_level(root, registry, args.set_level)
         elif args.command == "route":
             return _do_route(root, registry, args.prompt)
     except DriftError as exc:

@@ -5,6 +5,31 @@ All notable changes to this template are documented here. The format is based on
 [Semantic Versioning](https://semver.org/). Downstream projects adopt a release with
 `make template-sync REF=vX.Y.Z` (see `docs/template-sync.md`).
 
+## [Unreleased]
+
+### Added (minor — becomes 2.1.0)
+- **Harness levels** (ADR-0003). A project carries `minimal` (7 skills: plan,
+  debug, verify, research, review, `writing-plans`, `brainstorm_quick`) or `full`
+  (every live skill). The other skills stay in `.github/skills*/` as optional
+  add-ons: not linked, not listed in adapters, switched on with `include` in
+  `harness.toml`.
+  - Defined in `.github/harness-levels.toml` (governance); selected in the
+    project-owned `harness.toml`.
+  - `make init NAME=x` defaults to `minimal`; `LEVEL=full` keeps everything.
+  - `make skill-level [SET=minimal|full]` lists or switches the level.
+  - Under a level, adapters never route to a skill the project does not carry
+    (intents, routing rules and legacy aliases are filtered). The catalog page
+    marks each skill *carried* or *optional*.
+  - No `harness.toml` means `full`, with byte-identical output. Protocol stays 2.
+
+### Changed
+- `TEMPLATE_REPO` and the template-sync docs point at
+  `git@github.com:xmartlabs/sdlc-ml-python-template.git`. `make init` preserves
+  upstream lines under both the current and the former (`ml-python-base`) name.
+- The operating playbook and `/plan`, `/orchestrate` name full-level skills
+  (`brainstorming`, `subagent-driven-development`) as "if carried", so they read
+  correctly at either level.
+
 ## [2.0.0]
 
 ### Changed

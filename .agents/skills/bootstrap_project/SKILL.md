@@ -48,6 +48,9 @@ Antigravity, or Copilot: the heavy lifting is system-enforced by
    `make sync-skills`, `make template-remote-setup`, and `make ci`.
 4. If the user tracks a different template fork, pass it through:
    `make init NAME=<name> TEMPLATE_REPO=git@github.com:org/fork.git`.
+   The project carries the `minimal` harness level unless the user asks for
+   every skill: `make init NAME=<name> LEVEL=full`. Optional skills can be
+   switched on later with `include` in `harness.toml` (ADR-0003).
 5. Ask the user to review `.env` (model endpoints/keys are machine-specific;
    defaults point at localhost). Never commit `.env`.
 6. Verify the exit gate: `make ci` must be green before declaring success.

@@ -1,0 +1,39 @@
+# Harness levels (ADR-0003): which governed skills a project carries.
+#
+# A project selects one in `harness.toml` at its root (`make init LEVEL=...` or
+# `make skill-level SET=...`). No `harness.toml` means `full` — every live skill,
+# exactly what every project carried before levels. `full` is built in and is
+# not declared here.
+#
+# Levels FILTER, never delete: `.github/skills*/` stay complete. Skills outside
+# the selected level are optional add-ons — not linked into native views and not
+# listed in adapters — switched on per project with `include = [...]` in
+# harness.toml. Governed agents keep working at any level: they read their bound
+# skills from `.github/skills*/`, which is always present.
+#
+# `minimal` is what real work used. A 2026-11-18 review of three repositories
+# built from this template (agent transcripts and git history) found these
+# skills invoked:
+#   - plan_and_execute_feature (11 sessions)
+#   - systematic_debugging (5)
+#   - verify_changes (3)
+#   - research_current_info (2)
+#   - requesting-code-review
+#   - brainstorm_quick
+# It also carries writing-plans, which the operating playbook and /plan name.
+# 16 of 25 skills were never invoked.
+#
+# Quality first: minimal is the default to carry, not a claim that the rest is
+# useless. Shrink it further only on evidence that nothing is lost.
+
+[level.minimal]
+description = "The working loop real projects use: plan, debug, verify, research, review."
+skills = [
+    "brainstorm_quick",
+    "plan_and_execute_feature",
+    "requesting-code-review",
+    "research_current_info",
+    "systematic_debugging",
+    "verify_changes",
+    "writing-plans",
+]

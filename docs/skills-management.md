@@ -148,6 +148,49 @@ small-model path, families, profiles, a full attribute table and the trigger
 phrases. It is deterministic (no timestamps) and `make check-sync` fails when it
 is stale, so README and wiki pages link to it instead of repeating lists.
 
+## Harness levels: minimal and full
+
+A project carries one **harness level** ([ADR-0003](adr/0003-a-project-carries-a-harness-level-not-the-whole-catalog.md)).
+The skills outside it stay in the repo as optional add-ons. They are not linked
+into native views or listed in adapters, and one line switches any of them on.
+
+| Level | Skills | Use |
+|---|---|---|
+| `minimal` | `plan_and_execute_feature`, `systematic_debugging`, `verify_changes`, `research_current_info`, `requesting-code-review`, `writing-plans`, `brainstorm_quick` | default for a new project (`make init`) |
+| `full` | every live skill | `make init LEVEL=full`; also what no `harness.toml` means |
+
+| File | Owner | Holds |
+|---|---|---|
+| `.github/harness-levels.toml` | governance (travels with template syncs) | level definitions (`extends` composes; `full` is built in) |
+| `harness.toml` (repo root) | the project (no sync writes it) | `level`, plus `include` / `exclude` |
+
+```toml
+# harness.toml
+[skills]
+level = "minimal"
+include = ["test-driven-development"]   # switch an optional skill on
+exclude = []                            # switch a level skill off
+```
+
+```bash
+make skill-level             # list levels and what this repo carries
+make skill-level SET=full    # select one (writes harness.toml, relinks, re-renders)
+make sync-skills             # after editing harness.toml by hand
+```
+
+How a level is applied:
+
+- The engine filters at one seam, so link, render, route and `check-sync` agree.
+- `check-sync` flags a native view with extra **or missing** entries.
+- Under a level, adapters never route to a skill the project does not carry:
+  intents, routing rules and legacy aliases that name one are not rendered.
+- `docs/generated/skills-catalog.md` keeps listing everything, with a
+  *carried* / *optional* column.
+- Governed agents read their bound skills from `.github/skills*/`, which every
+  level keeps, so they work at any level.
+- `full`, explicit or by absence of `harness.toml`, renders byte-identical
+  output to before levels existed.
+
 ## Routing evals
 
 `tests/routing/scenarios.toml` holds versioned scenarios (`prompt`,

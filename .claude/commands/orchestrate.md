@@ -18,5 +18,6 @@ Steps:
 5. Integrate the results, resolve conflicts, then verify the combined change with
    `/verify`.
 
-Follow the `subagent-driven-development` skill and `.github/orchestration.md`. Prefer
-real fan-out over serial grinding when subtasks are genuinely independent.
+Follow `.github/orchestration.md` (and the `subagent-driven-development` skill when
+this project's harness level carries it). Prefer real fan-out over serial grinding
+when subtasks are genuinely independent.

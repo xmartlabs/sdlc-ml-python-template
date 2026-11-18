@@ -63,11 +63,13 @@ architecture choice does.
    `memory/context.md` and `memory/learnings.md` for prior context. Explore first;
    blind edits cause rework.
 2. **Plan multi-step work.** For anything beyond a trivial change, start with a
-   `TodoWrite` plan and the `writing-plans` / `brainstorming` (or `brainstorm_quick`)
-   skill. Complete one phase before the next.
+   `TodoWrite` plan and the `writing-plans` / `brainstorm_quick` skill (or
+   `brainstorming`, if this project's harness level carries it, for a
+   design-impacting change). Complete one phase before the next.
 3. **Delegate independent work in parallel.** When subtasks are independent, dispatch
-   them to subagents concurrently (one message, multiple `Task` calls) per the
-   `subagent-driven-development` skill. Use the governed agents in `.github/agents/`.
+   them to subagents concurrently (one message, multiple `Task` calls) — per the
+   `subagent-driven-development` skill if it is carried here — and use the
+   governed agents in `.github/agents/`.
 4. **Verify continuously.** Run `make test` (or focused `pytest`) after each
    substantive change, and close work with `make check` and the
    `requesting-code-review` skill. The `/verify` command bundles the gate.

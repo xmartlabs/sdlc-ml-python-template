@@ -12,7 +12,9 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SCRIPT_PATH = REPO_ROOT / "scripts/init_project.py"
 
-TEMPLATE_REPO_LINE = "TEMPLATE_REPO ?= git@github.com:marcosdh1987/ml-python-base.git\n"
+TEMPLATE_REPO_LINE = (
+    "TEMPLATE_REPO ?= git@github.com:xmartlabs/sdlc-ml-python-template.git\n"
+)
 
 
 def _load_script() -> ModuleType:
@@ -194,3 +196,77 @@ def test_rewrite_text_preserves_upstream_lines() -> None:
     assert "import demo\n" in text
     assert replaced == 1
     assert skipped == 1
+
+
+@pytest.mark.parametrize(
+    "url",
+    [
+        "git@github.com:xmartlabs/sdlc-ml-python-template.git",
+        "git@github.com:marcosdh1987/ml-python-base.git",  # former name
+    ],
+)
+def test_both_upstream_names_are_preserved(url: str) -> None:
+    line = f"TEMPLATE_REPO ?= {url}  # ml_python_base\n"
+    text, _replaced, skipped = init_project.rewrite_text(line, "demo", "demo")
+    assert text == line
+    assert skipped == 1
+
+
+# --------------------------------------------------------------------------
+# Harness level selection (ADR-0003)
+# --------------------------------------------------------------------------
+
+
+def _with_levels(root: Path) -> Path:
+    levels = root / ".github/harness-levels.toml"
+    levels.parent.mkdir(parents=True, exist_ok=True)
+    levels.write_text(
+        '[level.minimal]\nskills = ["verify_changes"]\n', encoding="utf-8"
+    )
+    _git(root, "add", "-A")
+    _git(root, "commit", "-q", "-m", "levels")
+    return root
+
+
+def test_init_selects_minimal_by_default(mini_repo: Path) -> None:
+    _with_levels(mini_repo)
+    assert _run(mini_repo) == 0
+    assert 'level = "minimal"' in (mini_repo / "harness.toml").read_text(
+        encoding="utf-8"
+    )
+
+
+def test_init_selects_full_on_request(mini_repo: Path) -> None:
+    _with_levels(mini_repo)
+    assert _run(mini_repo, "--level", "full") == 0
+    assert 'level = "full"' in (mini_repo / "harness.toml").read_text(encoding="utf-8")
+
+
+def test_an_unknown_level_fails_before_any_rewrite(mini_repo: Path) -> None:
+    _with_levels(mini_repo)
+    before = _snapshot(mini_repo)
+    assert _run(mini_repo, "--level", "tiny") == 1
+    assert _snapshot(mini_repo) == before
+    assert (mini_repo / "src/ml_python_base").is_dir()
+
+
+def test_init_never_overwrites_a_project_selection(mini_repo: Path) -> None:
+    _with_levels(mini_repo)
+    own = mini_repo / "harness.toml"
+    own.write_text('[skills]\nlevel = "full"\n', encoding="utf-8")
+    _git(mini_repo, "add", "-A")
+    _git(mini_repo, "commit", "-q", "-m", "own selection")
+    assert _run(mini_repo) == 0
+    assert own.read_text(encoding="utf-8") == '[skills]\nlevel = "full"\n'
+
+
+def test_a_clone_without_level_definitions_writes_no_selection(mini_repo: Path) -> None:
+    assert _run(mini_repo) == 0
+    assert not (mini_repo / "harness.toml").exists()
+
+
+def test_dry_run_reports_the_level_without_writing(mini_repo: Path, capsys) -> None:
+    _with_levels(mini_repo)
+    assert _run(mini_repo, "--dry-run") == 0
+    assert "select harness level 'minimal'" in capsys.readouterr().out
+    assert not (mini_repo / "harness.toml").exists()

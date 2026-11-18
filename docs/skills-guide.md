@@ -98,6 +98,19 @@ Both vocabularies are declared once in `adapters/registry.toml` under
 `[catalog]` and validated on every sync: a typo in a family name fails
 `make sync-skills`.
 
+A **harness level** is a different thing: a project-wide selection of which
+skills to carry (`minimal` or `full`, set in `harness.toml`). A profile labels
+one skill; a level picks a set across profiles. To switch an optional skill on
+in a `minimal` project, add it to `include` and run `make sync-skills`:
+
+```toml
+[skills]
+level = "minimal"
+include = ["test-driven-development"]
+```
+
+See `docs/skills-management.md` → *Harness levels* and ADR-0003.
+
 ## 5. How the model picks a skill
 
 Three signals, in the order the model meets them:
@@ -286,6 +299,7 @@ a saved copy of an older adapter file to compare two catalog versions.
 
 ```bash
 make sync-skills        # regenerate every projection + docs/generated/skills-catalog.md
+make skill-level        # harness level: list, or SET=minimal|full to switch
 make check-sync         # drift gate (CI)
 make route PROMPT="…"   # what the catalog routes a request to
 make routing-eval       # deterministic routing scenarios

@@ -10,6 +10,8 @@ drift from the actual governed skills. The catalog document
 
 from __future__ import annotations
 
+import re
+from dataclasses import replace
 from pathlib import Path
 
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, select_autoescape
@@ -25,6 +27,8 @@ TEMPLATES_DIR = Path("adapters/templates")
 DEFAULT_TEMPLATE = "_skills_block.j2"
 CATALOG_TEMPLATE = "skills_catalog.md.j2"
 REFRESH_COMMAND = "make sync-skills"
+# A backticked skill name inside a routing rule (`plan_and_execute_feature`).
+_BACKTICKED = re.compile(r"`([A-Za-z0-9_:-]+)`")
 
 
 def _environment(root: Path) -> Environment:
@@ -40,16 +44,57 @@ def _environment(root: Path) -> Environment:
     )
 
 
-def _context(registry: Registry, skills: list[Skill]) -> dict:
-    """Template variables shared by the adapter block and the catalog page."""
+def carried_routing(
+    registry: Registry, carried: list[Skill], catalog: list[Skill]
+) -> tuple[list, list[str]]:
+    """Intents and routing rules that name only skills the project carries.
+
+    Under a harness level (ADR-0003) an adapter must never route the agent to
+    a skill the project does not carry: an intent whose skill is optional here
+    is dropped, and so is a rule that names any catalog skill outside
+    ``carried``. A backticked word that is not a skill (a mode such as
+    `execute_only`) never drops a rule. When ``carried`` is the whole catalog
+    (``full``) nothing is dropped.
+    """
+    live = {s.name for s in carried if not s.meta.is_legacy}
+    every_skill = {s.name for s in catalog}
+    intents = [i for i in registry.catalog.intents if i.skill in live]
+    rules = [
+        rule
+        for rule in registry.catalog.routing_rules
+        if all(
+            name in live for name in _BACKTICKED.findall(rule) if name in every_skill
+        )
+    ]
+    return intents, rules
+
+
+def _context(
+    registry: Registry, skills: list[Skill], catalog: list[Skill] | None = None
+) -> dict:
+    """Template variables shared by the adapter block and the catalog page.
+
+    ``catalog`` is the whole live catalog when it differs from ``skills`` (a
+    project under a harness level): routing is filtered against what the
+    project carries, and a rule naming any catalog skill it does not carry is
+    dropped.
+    """
     view = build_view(skills, registry)
+    intents, rules = carried_routing(registry, skills, catalog or skills)
+    if catalog is not None and len(catalog) != len(skills):
+        # A legacy name mapped to a skill this project does not carry would
+        # route the agent to nothing; under a level, keep only live mappings.
+        live = {s.name for s in skills if not s.meta.is_legacy}
+        view = replace(
+            view, aliases=tuple(a for a in view.aliases if a.replacement in live)
+        )
     return {
         "internal_skills": [s for s in skills if s.kind == KIND_INTERNAL],
         "external_skills": [s for s in skills if s.kind != KIND_INTERNAL],
         "view": view,
-        "intents": registry.catalog.intents,
+        "intents": intents,
         "policies": registry.catalog.policies,
-        "routing_rules": registry.catalog.routing_rules,
+        "routing_rules": rules,
         "small_model_note": registry.catalog.small_model_note,
         "catalog_path": registry.catalog.output,
         "governance": registry.governance,
@@ -71,15 +116,12 @@ def render_region(
     a governed harness is projected into a foreign repository, which owns
     neither ``adapters/templates`` nor ``.github/skills``.
     """
-    skills = (
-        skills
-        if skills is not None
-        else discover_skills(template_root or root, registry=registry)
-    )
+    catalog = discover_skills(template_root or root, registry=registry)
+    skills = skills if skills is not None else catalog
     env = _environment(template_root or root)
     template_name = tool.adapter_template or DEFAULT_TEMPLATE
     template = env.get_template(template_name)
-    context = _context(registry, skills)
+    context = _context(registry, skills, catalog)
     context.update({"tool": tool, "ref": tool.reference_prefix})
     return template.render(**context).strip()
 
@@ -97,14 +139,23 @@ def splice(existing: str, region: str) -> str:
     return f"{existing[:begin_at]}\n{region}\n{existing[end_at:]}"
 
 
-def expected_file(root: Path, registry: Registry, tool: ToolSpec) -> str | None:
-    """Return what the adapter file should contain, or None if no adapter."""
+def expected_file(
+    root: Path,
+    registry: Registry,
+    tool: ToolSpec,
+    skills: list[Skill] | None = None,
+) -> str | None:
+    """Return what the adapter file should contain, or None if no adapter.
+
+    ``skills`` is what the project carries (its harness level); omitted, the
+    whole catalog — the behavior before levels existed.
+    """
     if not tool.adapter_file:
         return None
     path = root / tool.adapter_file
     if not path.is_file():
         return None
-    region = render_region(root, registry, tool)
+    region = render_region(root, registry, tool, skills=skills)
     return splice(path.read_text(encoding="utf-8"), region)
 
 
@@ -142,12 +193,23 @@ def render_tool(
 
 
 def render_catalog(
-    root: Path, registry: Registry, skills: list[Skill] | None = None
+    root: Path,
+    registry: Registry,
+    skills: list[Skill] | None = None,
+    carried: set[str] | None = None,
 ) -> str:
-    """Render the human-facing catalog page from ``skills_catalog.md.j2``."""
+    """Render the human-facing catalog page from ``skills_catalog.md.j2``.
+
+    The page always lists the whole catalog. ``carried`` (the names a project
+    under a harness level carries) adds a column saying which skills are
+    carried here and which are optional add-ons; None (``full``, the default)
+    renders the page exactly as before levels existed.
+    """
     skills = skills if skills is not None else discover_skills(root, registry=registry)
     template = _environment(root).get_template(CATALOG_TEMPLATE)
-    return template.render(**_context(registry, skills)).strip() + "\n"
+    context = _context(registry, skills)
+    context["carried"] = carried
+    return template.render(**context).strip() + "\n"
 
 
 def catalog_path(root: Path, registry: Registry) -> Path | None:
@@ -165,13 +227,16 @@ def catalog_path(root: Path, registry: Registry) -> Path | None:
 
 
 def write_catalog(
-    root: Path, registry: Registry, skills: list[Skill] | None = None
+    root: Path,
+    registry: Registry,
+    skills: list[Skill] | None = None,
+    carried: set[str] | None = None,
 ) -> bool:
     """Write the catalog document. Returns True if it changed."""
     path = catalog_path(root, registry)
     if path is None:
         return False
-    content = render_catalog(root, registry, skills)
+    content = render_catalog(root, registry, skills, carried=carried)
     current = path.read_text(encoding="utf-8") if path.is_file() else None
     if current == content:
         return False
