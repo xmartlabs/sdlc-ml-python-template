@@ -108,6 +108,7 @@ Read and follow:
 - Update docs in `docs/` when implementation or tests change.
 - Use absolute imports only.
 - NEVER perform git commits, git pushes, or branch integrations automatically. Leave all changes unstaged so the user can commit them manually (policy `git-actions`; an explicit user request in the session is the only override).
+- The developer is the sole author of every commit and PR: never commit, push or branch unless asked, never set a git identity, never add AI co-author or "Generated with" lines (see `.github/standards.md` → Authorship).
 
 ## Operating discipline (Antigravity)
 
