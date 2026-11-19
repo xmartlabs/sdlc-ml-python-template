@@ -1,9 +1,14 @@
 repos:
+  # Hooks that edit files are pinned to the pre-commit stage: at the commit-msg
+  # stage pre-commit hands hooks the commit message file, which they must not
+  # rewrite.
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v6.0.0
     hooks:
       - id: trailing-whitespace
+        stages: [pre-commit]
       - id: end-of-file-fixer
+        stages: [pre-commit]
       - id: check-yaml
       - id: check-added-large-files
         args: ['--maxkb=10000']
@@ -16,9 +21,25 @@ repos:
     hooks:
       - id: ruff
         args: [ --fix ]
+        stages: [pre-commit]
       - id: ruff-format
+        stages: [pre-commit]
 
   - repo: https://github.com/kynan/nbstripout
     rev: 0.7.1
     hooks:
       - id: nbstripout
+        stages: [pre-commit]
+
+  # Every commit is authored by the developer, never an AI agent: refuses an
+  # agent identity (a stray `[user]` in .git/config) and AI co-author trailers.
+  # Runs at the commit-msg stage, which `make setup-hooks` installs.
+  - repo: local
+    hooks:
+      - id: commit-authorship
+        name: commit authored by the developer, not an AI agent
+        entry: python3 scripts/check_commit_authorship.py
+        language: system
+        stages: [commit-msg]
+        always_run: true
+        pass_filenames: true

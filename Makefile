@@ -81,13 +81,14 @@ generate-requirements:
 	@uv export --format requirements-txt > requirements.txt
 	@echo "✅ requirements.txt generated"
 
-# Set up pre-commit hooks (Recommended to run once)
+# Set up git hooks (Recommended to run once): the pre-commit stage (format/lint)
+# and the commit-msg stage (commit-authorship guard, .github/standards.md).
 setup-hooks:
-	@echo "🪝 Installing pre-commit hooks..."
+	@echo "🪝 Installing pre-commit and commit-msg hooks..."
 	@if [ ! -d .venv ]; then make install; fi
 	@echo "📦 Syncing dev dependencies required for hooks..."
 	@uv sync --group dev
-	@. $(VENV_DIR)/bin/activate && pre-commit install
+	@. $(VENV_DIR)/bin/activate && pre-commit install --hook-type pre-commit --hook-type commit-msg
 	@echo "✅ Hooks installed!"
 
 # =============================================================================
@@ -465,7 +466,7 @@ help:
 	@echo "Development Setup:"
 	@echo "  make init NAME=my_project Bootstrap a fresh clone as a new project (rename + env + gates)"
 	@echo "  make install              Set up virtual environment and dependencies"
-	@echo "  make setup-hooks          Set up pre-commit hooks"
+	@echo "  make setup-hooks          Set up git hooks (pre-commit + commit-msg authorship guard)"
 	@echo "  make generate-requirements Generate requirements.txt from current environment"
 	@echo ""
 	@echo "Code Quality:"

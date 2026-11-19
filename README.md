@@ -352,7 +352,7 @@ assessments of AI-assisted coding skill (and what a template can/can't influence
 | `make install` | Setup environment, install python version and sync dependencies |
 | `make add PKG=x` | Add a new dependency to the project |
 | `make remove PKG=x` | Remove a dependency from the project |
-| `make setup-hooks` | Install pre-commit hooks for git |
+| `make setup-hooks` | Install git hooks: pre-commit (format/lint) and commit-msg (authorship guard) |
 | `make format` | Format code with Ruff |
 | `make lint` | Run code quality checks |
 | `make fix` | Auto-fix linting issues |

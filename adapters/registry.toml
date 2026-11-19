@@ -38,6 +38,8 @@ platform_paths = [
     "src/ml_python_base/skills_sync",
     "scripts/template_sync.py",
     "scripts/init_project.py",
+    "scripts/check_commit_authorship.py",
+    ".pre-commit-config.yaml",
     "Makefile",
     "adapters/registry.toml",
     "pyproject.toml",
