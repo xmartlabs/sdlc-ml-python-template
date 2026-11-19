@@ -88,7 +88,10 @@ When subtasks are independent, run them in parallel instead of grinding serially
 
 Confirm correctness continuously, not just at the end.
 
-- Run `make test` (or focused `pytest`) after each substantive change.
+- Run `make test` (or focused `pytest`) after each substantive change. It runs
+  pytest only and fails when any test fails, so its exit code is the verdict;
+  `make test-unit` / `make test-integration` split the suite by the
+  `integration` marker. `tests/test_makefile_test_targets.py` guards this.
 - Close work with `make check` and the `requesting-code-review` / `verify_changes`
   skills. For bugs, drive `systematic_debugging` (reproduce → isolate → fix → verify).
 - Command: `/verify`. CI is read-only — fix locally with `make fix` / `make format`.

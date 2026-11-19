@@ -20,6 +20,23 @@ Template for a new entry — newest first, directly below this comment.
 **How to apply:** <what to do differently next time>
 -->
 
+## A commit-msg hook sees more than the final message — 2026-11-19
+
+Git runs the `commit-msg` hook on the raw message file and cleans it afterwards.
+With `git commit -v` that file still holds the staged diff below the scissors
+line (`# ------------------------ >8 ------------------------`), plus every `#`
+comment line. The first port of the authorship guard scanned the diff and
+refused verbose commits that merely touched a line quoting "Generated with
+Claude". Separately, pre-commit hands the message file to every hook whose
+stages include `commit-msg`, so an unpinned fixer can rewrite the message.
+
+**Why it matters:** the bug is invisible to unit tests on clean messages and to
+`git commit -m`; it shows up only for developers who use `-v`/`commit.verbose`.
+**How to apply:** any commit-msg check stops at the scissors line and skips `#`
+lines; pin file-editing hooks to `stages: [pre-commit]`. Verify a hook in a
+throwaway repo with `GIT_EDITOR=true git commit -v -e -m ...`. The harness lab's
+`scripts/check_commit_authorship.py` still has the bug.
+
 ## A vendored engine needs its extension points upstream, or it cannot be upgraded — 2026-09-12
 
 Adopting catalog v3 in the harness lab failed 12 of its tests on the first pass, and

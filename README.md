@@ -277,7 +277,8 @@ Engine reference: [docs/skills-management.md](docs/skills-management.md).
 - `.github/automation.md`
 - CI and local checks through `make lint`, `make test`, and `make ci`
 - On PRs, if `src/` or `tests/` changes, at least one file in `docs/` must be updated
-- Test flow enforces `make format` and `make fix` before running tests
+- `make test` runs pytest only and fails when a test fails; it never formats or
+  fixes source (run `make format` / `make fix` yourself before committing)
 
 ### Level 4 — Orchestration
 
@@ -351,11 +352,13 @@ assessments of AI-assisted coding skill (and what a template can/can't influence
 | `make install` | Setup environment, install python version and sync dependencies |
 | `make add PKG=x` | Add a new dependency to the project |
 | `make remove PKG=x` | Remove a dependency from the project |
-| `make setup-hooks` | Install pre-commit hooks for git |
+| `make setup-hooks` | Install git hooks: pre-commit (format/lint) and commit-msg (authorship guard) |
 | `make format` | Format code with Ruff |
 | `make lint` | Run code quality checks |
 | `make fix` | Auto-fix linting issues |
-| `make test` | Run tests with coverage |
+| `make test` | Run all tests with coverage; fails when a test fails (no format/fix) |
+| `make test-unit` | Run tests not marked `integration` |
+| `make test-integration` | Run tests marked `integration` |
 | `make check` | Read-only quality gate: format check, ruff, bandit, mypy, tests |
 | `make check-sync` | Fail if any generated skill/agent/catalog artifact is stale |
 | `make check-docs-coverage` | Fail if `src/`/`tests/` changed without a `docs/` update |

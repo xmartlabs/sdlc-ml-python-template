@@ -81,7 +81,7 @@ surfaces in `git diff` for you to reconcile.
 
 `adapters/registry.toml` declares the versioned synchronization contract under
 `[template_sync]`. A registry without this block is a legacy protocol `0`
-consumer; this template currently declares protocol `1`.
+consumer; this template currently declares protocol `2`.
 
 The contract separates two channels that must never be applied together:
 
@@ -99,8 +99,11 @@ contains only:
 - `adapters/templates/`.
 
 The platform inventory contains `src/ml_python_base/skills_sync/`, template
-bootstrap/sync scripts, `Makefile`, `adapters/registry.toml`, `pyproject.toml`,
-and `uv.lock`. Listing a platform path does not authorize automatic copying.
+bootstrap/sync scripts, the commit-authorship guard
+(`scripts/check_commit_authorship.py`) and the hook config that runs it
+(`.pre-commit-config.yaml`), `Makefile`, `adapters/registry.toml`,
+`pyproject.toml`, and `uv.lock`. Listing a platform path does not authorize
+automatic copying.
 
 ### Consumer-specific behavior
 
@@ -134,10 +137,15 @@ later update.
 
 Downstream projects pin to **semver tags** (`vX.Y.Z`). To cut a release from the template:
 
-1. Add a `## [X.Y.Z]` section to `CHANGELOG.md` describing what changed.
-2. Run `make template-release VERSION=X.Y.Z` — bumps `pyproject.toml`, commits, and creates an
-   annotated tag `vX.Y.Z`.
-3. Push: `git push origin main --tags`.
+1. `make new-version [VERSION=X.Y.Z]` — bumps `pyproject.toml`, refreshes `uv.lock`, and
+   scaffolds the `## [X.Y.Z]` section in `CHANGELOG.md`. Curate the bullets by hand.
+2. Merge the bump to `main` through a reviewed PR (`make release-pr` opens one for a bump-only
+   change).
+3. On `main`: `make publish-release` — preflight, an interactive confirmation, then the
+   annotated tag `vX.Y.Z`, its push, the GitHub Release, and the release manifest.
+
+`make template-release` is deprecated: it committed and tagged with no guard, and now only
+prints these steps. Full policy: `docs/harness-release-lifecycle.md`.
 
 Downstream then adopts it with `make template-sync REF=vX.Y.Z` (or `make template-sync` for the
 latest tag).

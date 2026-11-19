@@ -81,13 +81,14 @@ generate-requirements:
 	@uv export --format requirements-txt > requirements.txt
 	@echo "✅ requirements.txt generated"
 
-# Set up pre-commit hooks (Recommended to run once)
+# Set up git hooks (Recommended to run once): the pre-commit stage (format/lint)
+# and the commit-msg stage (commit-authorship guard, .github/standards.md).
 setup-hooks:
-	@echo "🪝 Installing pre-commit hooks..."
+	@echo "🪝 Installing pre-commit and commit-msg hooks..."
 	@if [ ! -d .venv ]; then make install; fi
 	@echo "📦 Syncing dev dependencies required for hooks..."
 	@uv sync --group dev
-	@. $(VENV_DIR)/bin/activate && pre-commit install
+	@. $(VENV_DIR)/bin/activate && pre-commit install --hook-type pre-commit --hook-type commit-msg
 	@echo "✅ Hooks installed!"
 
 # =============================================================================
@@ -144,22 +145,26 @@ fix-force:
 # SYSTEM TESTING
 # =============================================================================
 
-# Run all tests with coverage
+# Run all tests with coverage. Runs pytest only (it never formats or fixes
+# source) and fails when pytest fails, so a red suite is a red target.
 test:
 	@echo "🧪 Running tests with coverage..."
 	@if [ ! -d .venv ]; then make install; fi
-	@echo "🎨 Running format before tests..."
-	@make format
-	@echo "🔧 Running fix before tests..."
-	@make fix
-	@. $(VENV_DIR)/bin/activate && PYTHONPATH=${PWD}/src pytest tests/ --cov=src --cov-report=html --cov-report=term-missing || echo "⚠️  No tests found to run"
+	@. $(VENV_DIR)/bin/activate && PYTHONPATH=${PWD}/src pytest tests/ --cov=src --cov-report=html --cov-report=term-missing
 	@echo "✅ Tests completed! See report in htmlcov/index.html"
 
-# Run specific tests
+# Unit tests only: everything not marked `integration`.
 test-unit:
 	@echo "🧪 Running unit tests..."
 	@if [ ! -d .venv ]; then make install; fi
-	@. $(VENV_DIR)/bin/activate && PYTHONPATH=${PWD}/src pytest tests/ -v
+	@. $(VENV_DIR)/bin/activate && PYTHONPATH=${PWD}/src pytest tests/ -m "not integration" -v
+
+# Integration tests only: tests marked `integration` (registered in pyproject).
+# pytest exits 5 when it selects no test, so this target fails if none exist.
+test-integration:
+	@echo "🧪 Running integration tests..."
+	@if [ ! -d .venv ]; then make install; fi
+	@. $(VENV_DIR)/bin/activate && PYTHONPATH=${PWD}/src pytest tests/ -m integration -v
 
 # =============================================================================
 # OPENCODE RUNTIME (self-hosted / cloud, configured via .env)
@@ -461,7 +466,7 @@ help:
 	@echo "Development Setup:"
 	@echo "  make init NAME=my_project Bootstrap a fresh clone as a new project (rename + env + gates)"
 	@echo "  make install              Set up virtual environment and dependencies"
-	@echo "  make setup-hooks          Set up pre-commit hooks"
+	@echo "  make setup-hooks          Set up git hooks (pre-commit + commit-msg authorship guard)"
 	@echo "  make generate-requirements Generate requirements.txt from current environment"
 	@echo ""
 	@echo "Code Quality:"
@@ -475,8 +480,9 @@ help:
 	@echo "  make check-docs-coverage  Fail if src/tests changed without a docs/ update (vs origin/main)"
 	@echo ""
 	@echo "Testing:"
-	@echo "  make test                 Run all tests with coverage"
-	@echo "  make test-unit            Run unit tests only"
+	@echo "  make test                 Run all tests with coverage (no format/fix; fails if a test fails)"
+	@echo "  make test-unit            Run unit tests only (not marked integration)"
+	@echo "  make test-integration     Run integration tests only (marked integration)"
 	@echo ""
 	@echo "OpenCode (self-hosted / cloud, via .env):"
 	@echo "  make opencode            Launch opencode TUI with .env loaded"
@@ -525,4 +531,4 @@ clean:
 .DEFAULT_GOAL := help
 
 # Declare phony targets
-.PHONY: init install setup-hooks opencode opencode-doctor toolbelt-doctor clean help generate-requirements test test-unit format lint lint-fast fix fix-force check typecheck ci template-remote-setup template-sync-preview template-sync-merge template-sync-rebase setup-claude-skills setup-antigravity-skills setup-opencode-skills sync-agents render-adapters render-catalog route routing-eval routing-eval-live sync-skills check-sync check-docs-coverage purge-external-skills skill-level
+.PHONY: init install setup-hooks opencode opencode-doctor toolbelt-doctor clean help generate-requirements test test-unit test-integration format lint lint-fast fix fix-force check typecheck ci template-remote-setup template-sync-preview template-sync-merge template-sync-rebase setup-claude-skills setup-antigravity-skills setup-opencode-skills sync-agents render-adapters render-catalog route routing-eval routing-eval-live sync-skills check-sync check-docs-coverage purge-external-skills skill-level

@@ -93,3 +93,42 @@ but no skill is "safe to delete" without evidence, and nothing is deleted here.
 - Shrinking `minimal` further, or growing it, should rest on evidence that no
   quality is lost (lab ablations) or that a skill is used. Do not shrink it on
   token cost alone.
+
+## Amendment (2026-11-19): first lab measurement
+
+The harness lab ran the first A/B of the two levels. This records what it
+measured. It is one small measurement, not proof that `minimal` is as good as
+`full`.
+
+**Setup.** Claude Haiku 4.5 with the lab's `harness` prompt, on four cases:
+`pr-review-v1`, `security-fix-v1`, `frontend-bugfix-v1` and `clinic-rules-t3`.
+`full` against `minimal` works as a group ablation of the 19 skills outside
+`minimal` in the lab's catalog (26 skills; this template has 25). Each arm has
+11 valid runs. Two runs lost to an inference-gateway outage were excluded.
+
+**Results.**
+
+- Fully solved runs: `full` 4/11, `minimal` 3/11. The gap is one frontend run.
+  The interval on the change in solved rate is [−42%, +9%], so this is not a
+  measured loss.
+- Mean check pass rate per case was mixed:
+
+  | Case | `full` | `minimal` |
+  |---|---|---|
+  | pr-review | 0.78 | 0.84 |
+  | security-fix | 0.91 | 0.85 |
+  | frontend | 0.97 | 0.95 |
+  | clinic | 1.00 | 1.00 |
+
+- Cost per run fell about 20% ($0.45 → $0.36).
+- No run opened any of the 19 skills outside `minimal`. Across the lab's
+  history, Haiku opened a template skill unprompted in 3 of 96 runs.
+
+**Consequence.** Keep `minimal` as the default and unchanged. To grow it, a
+skill must win an A/B while being used; adding skills that are never opened only
+adds context.
+
+**Caveats.** One model and four cases. The lab cases do not exercise the
+research or code-review skills, so `research_current_info` and
+`requesting-code-review` stay in `minimal` on the strength of the usage review
+above, not of this measurement.
