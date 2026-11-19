@@ -27,10 +27,12 @@ changes (`.github/standards.md`, `.github/automation.md`) travel with
   never appear as author, committer or co-author, never set a git identity, and
   never add AI co-author or "Generated with" lines. `scripts/check_commit_authorship.py`
   enforces it as the `commit-authorship` hook at the `commit-msg` stage, which
-  `make setup-hooks` now installs. Each adapter's runtime rules carry one line
+  `make setup-hooks` now installs (as does a plain `pre-commit install`, via
+  `default_install_hook_types`). The guard ignores the diff `git commit -v`
+  appends below the scissors line. Each adapter's runtime rules carry one line
   pointing at the rule. The harness lab's full `make ci` hook is documented as
-  an optional pre-push add-on in `docs/development-hooks.md`, not shipped (about
-  three minutes per run).
+  an optional pre-push add-on in `docs/development-hooks.md`, not shipped (every
+  commit would pay a full `make ci`; about three minutes in the lab).
 - `make test-integration` runs the tests marked `integration`; `make test-unit`
   now runs the rest (`-m "not integration"`).
 
@@ -45,12 +47,19 @@ They are additive and backward compatible, so this release is minor, like
 2.1.0. A consumer adopts them in its own reviewed PR:
 - `Makefile`: the `test`, `test-unit`, `test-integration` and `setup-hooks`
   targets. A pipeline that relied on `make test` exiting 0 with failing tests
-  now fails; that is the fix.
+  now fails; that is the fix. `make test-unit` used to run the whole suite and
+  now skips tests marked `integration`; a pipeline that runs only `test-unit`
+  should add `make test-integration` (or use `make test`).
 - `scripts/check_commit_authorship.py` and `.pre-commit-config.yaml`, now listed
   as platform paths in `adapters/registry.toml`. Re-run `make setup-hooks` to
   install the `commit-msg` hook.
 - Bring `tests/test_makefile_test_targets.py` and
   `tests/test_check_commit_authorship.py` along.
+- The authorship line in each adapter's runtime rules (`CLAUDE.md`,
+  `AGENTS.md`, `OPENCODE.md`, `.agents/rules/GEMINI.md`,
+  `.github/copilot-instructions.md`) sits in hand-written text that
+  `make template-sync` does not deliver; copy it by hand. The rule itself
+  reaches agents through `.github/standards.md`.
 
 A consumer that syncs governance before adopting the platform gets the
 authorship rule without the hook (the rule applies, only its enforcement is

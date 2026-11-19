@@ -145,8 +145,8 @@ fix-force:
 # SYSTEM TESTING
 # =============================================================================
 
-# Run all tests with coverage. Runs pytest only (no format/fix: it never mutates
-# the tree) and fails when pytest fails, so a red suite is a red target.
+# Run all tests with coverage. Runs pytest only (it never formats or fixes
+# source) and fails when pytest fails, so a red suite is a red target.
 test:
 	@echo "🧪 Running tests with coverage..."
 	@if [ ! -d .venv ]; then make install; fi

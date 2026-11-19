@@ -93,7 +93,9 @@ def test_a_green_suite_passes_the_target(tmp_path: Path, target: str) -> None:
 
 
 def test_make_test_runs_only_pytest(tmp_path: Path) -> None:
-    # No `make format` / `make fix`: running the tests never mutates the tree.
+    # No `make format` / `make fix`: running the tests never touches source.
+    # Limit: only tools reached through `$(VENV_DIR)/bin/activate` are stubbed;
+    # a recipe that called `uv run ruff ...` would bypass this check.
     venv, log = _stub_venv(tmp_path, pytest_exit=0)
 
     _make("test", venv)
