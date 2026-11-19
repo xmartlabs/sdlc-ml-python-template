@@ -50,7 +50,11 @@ model's verify loop running in that same `.venv` cannot detect it.
 - `make ci` — full read-only pipeline (`check` + `check-sync` +
   `check-docs-coverage`).
 - `make format` / `make fix` — local-only, mutate the tree.
-- `make lint` / `make test` — local helpers (mutating variants).
+- `make test` — all automated tests with coverage; propagates pytest failures and
+  does not format or fix source files.
+- `make test-unit` / `make test-integration` — the same suite split by the
+  `integration` marker (`-m "not integration"` / `-m integration`).
+- `make lint` — local helper (reports Bandit findings without failing the target).
 
 ## Implementation Notes
 
