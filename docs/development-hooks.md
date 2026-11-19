@@ -16,6 +16,9 @@ make setup-hooks
 2. Syncs development dependencies with `uv sync --group dev`.
 3. Installs two git hook types with
    `pre-commit install --hook-type pre-commit --hook-type commit-msg`.
+   `.pre-commit-config.yaml` also sets
+   `default_install_hook_types: [pre-commit, commit-msg]`, so a plain
+   `pre-commit install` installs both as well.
 
 This avoids failures like `Failed to spawn: pre-commit` when the binary is not yet installed.
 
@@ -48,8 +51,10 @@ commit and pull request. `scripts/check_commit_authorship.py` enforces it at the
   "Generated with Claude / Copilot / Codex / OpenCode" line.
 
 Naming a product in a message ("add the Claude-native transport") passes; only
-attribution of authorship is refused. Lines starting with `#` are ignored,
-because git strips them. Tests: `tests/test_check_commit_authorship.py`.
+attribution of authorship is refused. Lines starting with `#` are ignored, and
+so is everything from the scissors line down (the diff `git commit -v` shows),
+because git strips both after the hook ran. Tests:
+`tests/test_check_commit_authorship.py`.
 
 Run it by hand against a message file:
 
@@ -63,8 +68,9 @@ catches mistakes; it does not replace review.
 ## Optional: full quality gate as a git hook
 
 The harness lab also runs `make ci` from a `local-quality-gate` hook on every
-commit and push. This template does not ship it: `make ci` takes about three
-minutes, which every commit would pay. If a project wants it, add it to the
+commit and push. This template does not ship it: every commit would pay the
+full duration of `make ci`, which grows with the suite (in the harness lab,
+about three minutes per commit). If a project wants it, add it to the
 `local` repo in `.pre-commit-config.yaml`, preferably at the `pre-push` stage
 only:
 

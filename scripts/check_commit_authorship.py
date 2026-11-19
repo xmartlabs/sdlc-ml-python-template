@@ -38,6 +38,10 @@ _CO_AUTHOR = re.compile(r"^\s*co-authored-by:\s*(?P<who>.+)$", re.IGNORECASE)
 _GENERATED = re.compile(
     r"generated with .*(claude|copilot|codex|opencode)", re.IGNORECASE
 )
+# `git commit -v` appends the staged diff below this line (prefixed with the
+# comment character); git drops it, and everything after it, only after the
+# commit-msg hook ran.
+_SCISSORS = re.compile(r"^\S+ -{24} >8 -{24}$")
 
 _FIX = (
     "Commits in this repository are authored by the developer only.\n"
@@ -55,9 +59,15 @@ def identity_problems(ident: str, *, role: str) -> list[str]:
 
 
 def message_problems(message: str) -> list[str]:
-    """AI attribution lines in a commit message, ignoring git comment lines."""
+    """AI attribution lines in a commit message.
+
+    Ignores git comment lines and everything from the scissors line down (the
+    diff `git commit -v` shows), since git strips both from the commit.
+    """
     problems: list[str] = []
     for line in message.splitlines():
+        if _SCISSORS.match(line):
+            break
         if line.startswith("#"):
             continue
         co_author = _CO_AUTHOR.match(line)

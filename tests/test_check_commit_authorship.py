@@ -99,3 +99,25 @@ def test_main_ignores_comment_lines_git_strips(tmp_path, monkeypatch):
 
 def test_main_without_a_message_file_is_a_usage_error() -> None:
     assert guard.main([]) == 2
+
+
+# `git commit -v` appends the staged diff below a scissors line. The commit-msg
+# hook sees the whole file; git drops everything from the scissors line down
+# only after the hook ran.
+_VERBOSE_TAIL = (
+    "# ------------------------ >8 ------------------------\n"
+    "# Do not modify or remove the line above.\n"
+    "# Everything below it will be ignored.\n"
+    "diff --git a/tests/test_x.py b/tests/test_x.py\n"
+    '+MSG = "🤖 Generated with [Claude Code](https://claude.com/claude-code)"\n'
+    "     Co-authored-by: Claude <noreply@anthropic.com>\n"
+)
+
+
+def test_the_verbose_diff_below_the_scissors_line_is_ignored() -> None:
+    assert guard.message_problems("feat: x\n\n" + _VERBOSE_TAIL) == []
+
+
+def test_attribution_above_the_scissors_line_is_still_refused() -> None:
+    message = "feat: x\n\nCo-authored-by: Claude <noreply@anthropic.com>\n"
+    assert guard.message_problems(message + _VERBOSE_TAIL)

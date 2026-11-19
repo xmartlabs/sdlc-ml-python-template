@@ -1,3 +1,6 @@
+# A plain `pre-commit install` installs both stages; `make setup-hooks` does too.
+default_install_hook_types: [pre-commit, commit-msg]
+
 repos:
   # Hooks that edit files are pinned to the pre-commit stage: at the commit-msg
   # stage pre-commit hands hooks the commit message file, which they must not
